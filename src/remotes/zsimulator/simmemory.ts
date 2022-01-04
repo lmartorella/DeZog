@@ -1,5 +1,6 @@
 import {MemBuffer, Serializeable} from '../../misc/membuffer';
 import {Utility} from '../../misc/utility';
+import * as fs from 'fs';
 
 
 // Not populated memory reads as 0xff from the Z80 bus
@@ -82,7 +83,6 @@ export class SimulatedMemory implements Serializeable {
 	 * @param bankCount Number of banks.
 	 */
 	constructor(slotCount: number, bankCount: number) {
-		Utility.assert(bankCount>=slotCount);
 		// Create visual memory
 		this.visualMemory=new Array<number>(1<<(16-this.VISUAL_MEM_SIZE_SHIFT));
 		this.clearVisualMemory();
@@ -102,15 +102,27 @@ export class SimulatedMemory implements Serializeable {
 			sc/=2;
 		}
 		this.shiftCount=16-bits;
-		// Associate banks with slots
+		// Associate banks with slots (if enough)
 		this.slots=new Array<number>(slotCount);
 		for (let i=0; i<slotCount; i++)
-			this.slots[i]=i;
+			this.slots[i]=Math.min(i, bankCount - 1);
 
 		// Breakpoints
 		this.clearHit();
 		// Create watchpoint area
 		this.watchPointMemory=Array.from({length: 0x10000}, () => ({read: 0, write: 0}));
+	}
+
+	/**
+	 * Read a binary file as ROM data to a specific bank
+	 */
+	protected readRomFileToBank(path: string, bank: number, offset?: number) {
+		this.romBanks[bank] = true;
+		const romBuffer = fs.readFileSync(path);
+		const size = this.bankSize;
+		Utility.assert(romBuffer.length >= (offset || 0) + size, `ROM file ${path} length error`);
+		const rom = new Uint8Array(romBuffer.buffer, offset || 0, size);
+		this.writeBank(bank, rom);
 	}
 
 

@@ -147,6 +147,66 @@ export interface CustomCodeType {
 }
 
 
+/**
+ * Custom memory layout for the `zsim` remote
+ */
+export interface ZSimCustomMemoryModel {
+	/**
+	 * The slot count. It should be a power of 2, to segment the 64K addressing space in addressing slots of same size.
+	 */
+	slotCount: number;
+
+	/**
+	 * Count of memory banks. It must include RAM and ROM space. `bankCount` can be less than `slotCount` if some slots
+	 * are left empty (not populated).
+	 */
+	bankCount: number;
+
+	/**
+	 * The initial state of bank assignment. The array must have exactly `slotCount` elements.
+	 * Numbers are bank indices in the [0,bankCount] interval. `null` can be used for not-populated slots.
+	 */
+	slots: Array<number | null>;
+
+	/**
+	 * Optional list of ROM bank definition.
+	 */
+	romBanks?: Array<ZSimRomInfo>;
+}
+
+
+/**
+ * Define a ROM bank. See `ZSimCustomMemoryModel`.
+ */
+export interface ZSimRomInfo {
+	/**
+	 * Bank index in the [0,bankCount] interval.
+	 */
+	bank: number;
+
+	/**
+	 * File path of the ROM data. File content should be in raw format (e.g. `.rom`).
+	 * The file size should be greater or equal to the slot size.
+	 */
+	file: string;
+
+	/**
+	 * Offset to start load data from the target file. Useful for ROMs spanning more slots.
+	 * Zero if not defined.
+	 */
+	offset?: number;
+}
+
+
+// Standard ZX memory models: ZX16k, ZX48k, ZX128K or ZXNext.
+// - "RAM": One memory area of 64K RAM, no banks.
+// - "ZX16K": ROM and RAM as of the ZX Spectrum 16K.
+// - "ZX48K": ROM and RAM as of the ZX Spectrum 48K.
+// - "ZX128K": Banked memory as of the ZX Spectrum 48K (16k slots/banks).
+// - "ZXNEXT": Banked memory as of the ZX Next (8k slots/banks).
+export type ZSimZxMemoryModel = "RAM" | "ZX16K" | "ZX48K" | "ZX128K" | "ZXNEXT";
+
+
 /// Definitions for the 'zsim' remote type.
 export interface ZSimType {
 	// If enabled the simulator shows a keyboard to simulate keypresses.
@@ -173,13 +233,8 @@ export interface ZSimType {
 	// The sample rate used for audio. Defaults to 22050 Hz.
 	audioSampleRate: number,
 
-	// Memory model: ZX16k, ZX48k, ZX128K or ZXNext.
-	// - "RAM": One memory area of 64K RAM, no banks.
-	// - "ZX16K": ROM and RAM as of the ZX Spectrum 16K.
-	// - "ZX48K": ROM and RAM as of the ZX Spectrum 48K.
-	// - "ZX128K": Banked memory as of the ZX Spectrum 48K (16k slots/banks).
-	// - "ZXNEXT": Banked memory as of the ZX Next (8k slots/banks).
-	memoryModel: string;
+	// Memory model: it can be a string for standard memory layouts, or a custom layout (with or without banking).
+	memoryModel: ZSimZxMemoryModel | ZSimCustomMemoryModel;
 
 	// The number of interrupts to calculate the average from. 0 to disable.
 	cpuLoadInterruptRange: number,
@@ -419,7 +474,7 @@ export class Settings {
 			launchCfg.zsim.visualMemory = true;
 		if (launchCfg.zsim.memoryModel == undefined)
 			launchCfg.zsim.memoryModel = "RAM";
-		launchCfg.zsim.memoryModel = launchCfg.zsim.memoryModel.toUpperCase();
+		launchCfg.zsim.memoryModel = typeof launchCfg.zsim.memoryModel === "string" ? (launchCfg.zsim.memoryModel.toUpperCase() as ZSimZxMemoryModel) : launchCfg.zsim.memoryModel;
 		if (launchCfg.zsim.Z80N == undefined)
 			launchCfg.zsim.Z80N = false;
 		if (launchCfg.zsim.vsyncInterrupt == undefined)

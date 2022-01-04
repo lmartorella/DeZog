@@ -220,7 +220,7 @@ export class ZesaruxRemote extends RemoteBase {
 				else {
 					// For all others no paging is assumed.
 					Z80Registers.decoder = new DecodeZesaruxRegisters(0);
-					this.memoryModel = new MemoryModel();
+					this.memoryModel = new MemoryModel(1);
 				}
 				// Init
 				this.memoryModel.init();

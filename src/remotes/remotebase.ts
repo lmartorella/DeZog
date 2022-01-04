@@ -123,6 +123,7 @@ export class RemoteBase extends EventEmitter {
 	//protected slots: number[]|undefined=undefined;
 
 	/// The used memory model. E.g. if and how slots are used.
+	/// Used for the visual memory rendering
 	public memoryModel: MemoryModel;
 
 

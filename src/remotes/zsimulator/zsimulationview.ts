@@ -123,7 +123,7 @@ export class ZSimulationView extends BaseView {
 
 		// Add title
 		Utility.assert(this.vscodePanel);
-		this.vscodePanel.title = 'Z80 Simulator - ' + Settings.launch.zsim.memoryModel;
+		this.vscodePanel.title = 'Z80 Simulator - ' + (typeof Settings.launch.zsim.memoryModel === "string" ? Settings.launch.zsim.memoryModel : "Custom");
 
 		// Read path for additional javascript code
 		this.customUiPath = Settings.launch.zsim.customCode.uiPath;
@@ -647,7 +647,7 @@ width:70px;
 
 		// Memory Pages / Visual Memory
 		if (Settings.launch.zsim.visualMemory) {
-			const zx = Settings.launch.zsim.memoryModel.includes("ZX");
+			const zx = typeof Settings.launch.zsim.memoryModel === "string" && Settings.launch.zsim.memoryModel.includes("ZX");
 			const slots = this.simulator.getSlots();
 			const banks = this.simulator.memoryModel.getMemoryBanks(slots);
 			html +=

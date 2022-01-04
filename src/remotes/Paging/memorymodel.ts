@@ -17,7 +17,7 @@ export interface MemoryBank {
 
 
 /**
- * Class that takes care of the memory paging.
+ * Class that takes care of the memory paging, for UI visualization purposes.
  * I.e. it defines which memory bank to slot association is used.
  *
  * Is the base class and defines:
@@ -26,11 +26,17 @@ export interface MemoryBank {
 export class MemoryModel {
 
 	/**
-	 * Constructor.
+	 * The size of one bank.
 	 */
-	constructor() {
-	}
+	protected bankSize: number;
 
+	/**
+	 * @param slotCount Number of slots used for the 64k. 64k/slots is the used bank size.
+	 * @param memoryBanks If passed, hard-code the memory banks structure
+	 */
+	constructor(slotCount: number, private readonly memoryBanks?: Array<MemoryBank>) {
+		this.bankSize = 0x10000/slotCount;
+	}
 
 	/**
 	 * Initialize.
@@ -40,7 +46,6 @@ export class MemoryModel {
 		Z80Registers.setSlotsAndBanks(undefined, undefined);
 	}
 
-
 	/**
 	 * Returns the standard description, I.e. 0-3FFF = ROM, rest is RAM.
 	 * @param slots Not used.
@@ -48,93 +53,47 @@ export class MemoryModel {
 	 * and a name.
 	 */
 	public getMemoryBanks(slots: number[]|undefined): MemoryBank[] {
-		// Prepare array
-		const pages: Array<MemoryBank>=[
-			{start: 0x0000, end: 0xFFFF, name: "RAM"}
-		];
-		// Return
-		return pages;
+		// If this.memoryBanks is not defined, this method should be overridden
+		return this.memoryBanks!;
 	}
-
 
 	/**
 	 * Returns the bank size.
-	 * @returns 0 in this case = no banks used.
 	 */
 	public getBankSize() {
-		return 0;
+		// @returns 0 in this case = no banks used.
+		return this.bankSize;
 	}
-
 }
 
 /**
- * Class that takes care of the memory paging.
- * I.e. it defines which memory bank to slot association is used.
- *
- * Is the base class and defines:
+ * Specialized `MemoryModel` for ZX16
  * 0000-3FFF: ROM
  * 4000-7FFF: RAM
  */
- export class Zx16MemoryModel extends MemoryModel {
-
-	/**
-	 * Returns the standard description, I.e. 0-3FFF = ROM, rest is RAM.
-	 * @param slots Not used.
-	 * @returns An array with the available memory pages. Contains start and end address
-	 * and a name.
-	 */
-	public getMemoryBanks(slots: number[]|undefined): MemoryBank[] {
-		return [
+export class Zx16MemoryModel extends MemoryModel {
+	constructor() {
+		super(4, [
 			{start: 0x0000, end: 0x3FFF, name: "ROM"},
 			{start: 0x4000, end: 0x7FFF, name: "RAM"},
 			{start: 0x8000, end: 0xFFFF, name: "N/A"}
-		];
+		]);
 	}
-
-
-	/**
-	 * Returns the bank size.
-	 * @returns 0 in this case = no banks used.
-	 */
-	public getBankSize() {
-		return 0;
-	}
-
 }
 
 
 /**
- * Class that takes care of the memory paging.
- * I.e. it defines which memory bank to slot association is used.
- *
- * Is the base class and defines:
+ * Specialized `MemoryModel` for ZX48
  * 0000-3FFF: ROM
  * 4000-FFFF: RAM
  */
 export class Zx48MemoryModel extends MemoryModel {
-
-	/**
-	 * Returns the standard description, I.e. 0-3FFF = ROM, rest is RAM.
-	 * @param slots Not used.
-	 * @returns An array with the available memory pages. Contains start and end address
-	 * and a name.
-	 */
-	public getMemoryBanks(slots: number[]|undefined): MemoryBank[] {
-		return [
+	constructor() {
+		super(4, [
 			{start: 0x0000, end: 0x3FFF, name: "ROM"},
 			{start: 0x4000, end: 0xFFFF, name: "RAM"}
-		];
+		]);
 	}
-
-
-	/**
-	 * Returns the bank size.
-	 * @returns 0 in this case = no banks used.
-	 */
-	public getBankSize() {
-		return 0;
-	}
-
 }
 
 
@@ -148,21 +107,13 @@ export class Zx48MemoryModel extends MemoryModel {
  */
 export class Zx128MemoryModel extends MemoryModel {
 
-	// Number of slots used for the 64k. 64k/slots is the used bank size.
-	protected countSlots: number;
-
-	// The size of one bank.
-	protected bankSize: number;
-
 	/**
 	 * Constructor.
 	 * @param countSlots Number of slots used for the 64k. 64k/slots is the used bank size.
 	 * For ZX128k these are 4 slots.
 	 */
 	constructor(countSlots=4) {
-		super();
-		this.countSlots=countSlots;
-		this.bankSize=0x10000/countSlots;
+		super(countSlots);
 	}
 
 	/**
@@ -194,32 +145,16 @@ export class Zx128MemoryModel extends MemoryModel {
 	 * and a name.
 	 */
 	public getMemoryBanks(slots: number[]|undefined): MemoryBank[] {
-		// Prepare array
-		const pages: Array<MemoryBank>=[];
-		// Fill array
 		if (slots) {
-			let start=0x0000;
-			let i=0;
-			slots.map(bank => {
+			return slots.map((bankIdx, i) => {
+				const start = i*this.bankSize;
 				const end=start+this.bankSize-1;
-				const name=(i==0)? "ROM"+(bank&0x01):"BANK"+bank;
-				pages.push({start, end, name});
-				// Next
-				start=end+1;
-				i++;
+				const name=(i==0)? "ROM"+(bankIdx&0x01):"BANK"+bankIdx;
+				return {start, end, name};
 			});
+		} else {
+			return [];
 		}
-		// Return
-		return pages;
-	}
-
-
-	/**
-	 * Returns the bank size.
-	 * @returns this.bankSize
-	 */
-	public getBankSize() {
-		return this.bankSize;
 	}
 }
 
@@ -275,20 +210,16 @@ export class ZxNextMemoryModel extends Zx128MemoryModel {
 	 * and a name.
 	 */
 	public getMemoryBanks(slots: number[]|undefined): MemoryBank[] {
-		// Prepare array
-		const pages: Array<MemoryBank>=[];
-		// Fill array
 		if (slots) {
-			let start=0x0000;
-			slots.map(bank => {
+			return slots.map((bank, i) => {
+				const start=i*this.bankSize;
 				const end=start+this.bankSize-1;
 				const name=(bank>=254)? "ROM":"BANK"+bank;
-				pages.push({start, end, name});
-				start=end+1;
+				return {start, end, name};
 			});
+		} else {
+			return [];
 		}
-		// Return
-		return pages;
 	}
 }
 

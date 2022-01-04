@@ -2,7 +2,7 @@ import {DzrpRemote} from '../dzrp/dzrpremote';
 import {Z80_REG, Z80Registers} from '../z80registers';
 import {Z80Ports} from './z80ports';
 import {Z80Cpu} from './z80cpu';
-import {Settings} from '../../settings';
+import {Settings, ZSimCustomMemoryModel, ZSimZxMemoryModel} from '../../settings';
 import {Utility} from '../../misc/utility';
 import {BREAK_REASON_NUMBER} from '../remotebase';
 import {Labels} from '../../labels/labels';
@@ -14,7 +14,7 @@ import {Zx16Memory} from './zx16memory';
 import {Zx48Memory} from './zx48memory';
 import {GenericBreakpoint} from '../../genericwatchpoint';
 import {Z80RegistersStandardDecoder} from '../z80registersstandarddecoder';
-import {MemoryModel, Zx128MemoryModel, Zx16MemoryModel, Zx48MemoryModel, ZxNextMemoryModel} from '../Paging/memorymodel';
+import {Zx128MemoryModel, Zx16MemoryModel, Zx48MemoryModel, ZxNextMemoryModel} from '../Paging/memorymodel';
 import {SimulatedMemory} from './simmemory';
 import {Zx128Memory} from './zx128memory';
 import {ZxNextMemory} from './zxnextmemory';
@@ -22,6 +22,7 @@ import {SnaFile} from '../dzrp/snafile';
 import {NexFile} from '../dzrp/nexfile';
 import {CustomCode} from './customcode';
 import {BeeperBuffer, ZxBeeper} from './zxbeeper';
+import { CustomMemory } from './customMemory';
 
 
 
@@ -257,7 +258,7 @@ export class ZSimRemote extends DzrpRemote {
 	 * - "ZX128": Banked memory as of the ZX Spectrum 48K (16k slots/banks).
 	 * - "ZXNEXT": Banked memory as of the ZX Next (8k slots/banks).
 	 */
-	protected configureMachine(memModel: string) {
+	protected configureMachine(memModel: ZSimZxMemoryModel | ZSimCustomMemoryModel) {
 		Z80Registers.decoder = new Z80RegistersStandardDecoder();	// Required for the memory model.
 
 		// Create ports for paging
@@ -291,20 +292,50 @@ export class ZSimRemote extends DzrpRemote {
 			});
 		}
 
-		// Configure different memory models
+		// Configure different memory models. Fallback 'RAM' to custom model (non-ZX)
+		if (memModel === "RAM") {
+			// 64K RAM, no ZX
+			memModel = {
+				bankCount: 1,
+				slotCount: 1,
+				slots: [0]
+			};
+		}
+
+		if (typeof memModel === "string") {
+			this.configureZxMachine(memModel);
+		} else if (typeof memModel === "object") {
+			// Configure custom machine from declaration
+			this.memory = new CustomMemory(memModel);
+			this.memoryModel = (this.memory as CustomMemory).getMemoryModel();
+		} else {
+			throw Error(`Unknown memory model structure: ${JSON.stringify(memModel)}.`);
+		}
+
+		// Convert labels if necessary.
+		this.memoryModel.init();
+		Labels.convertLabelsTo(this.memoryModel);
+
+		// Create a Z80 CPU to emulate Z80 behavior
+		this.z80Cpu = new Z80Cpu(this.memory, this.ports, () => {
+			this.emit('vertSync');
+		});
+
+		// For restoring the state
+		this.serializeObjects = [
+			this.z80Cpu,
+			this.memory,
+			this.zxBeeper,
+			// this.ports // Note: ports are not serialized anymore. Since customCode.
+		];
+	}
+
+
+	private configureZxMachine(memModel: ZSimZxMemoryModel) {
 		switch (memModel) {
-			case "RAM":
-				{
-					// 64K RAM, no ZX
-					// Memory Model
-					this.memoryModel = new MemoryModel();
-					this.memory = new SimulatedMemory(1, 1);
-				}
-				break;
 			case "ZX16K":
 				{
 					// ZX 16K
-					// Memory Model
 					this.memoryModel = new Zx16MemoryModel();
 					this.memory = new Zx16Memory();
 				}
@@ -312,7 +343,6 @@ export class ZSimRemote extends DzrpRemote {
 			case "ZX48K":
 				{
 					// ZX 48K
-					// Memory Model
 					this.memoryModel = new Zx48MemoryModel();
 					this.memory = new Zx48Memory();
 				}
@@ -349,25 +379,8 @@ export class ZSimRemote extends DzrpRemote {
 				}
 				break;
 			default:
-				throw Error("Unknown memory model: '" + memModel + "'.");
+				throw Error(`Unknown memory model: '${memModel}'.`);
 		}
-
-		// Convert labels if necessary.
-		this.memoryModel.init();
-		Labels.convertLabelsTo(this.memoryModel);
-
-		// Create a Z80 CPU to emulate Z80 behavior
-		this.z80Cpu = new Z80Cpu(this.memory, this.ports, () => {
-			this.emit('vertSync');
-		});
-
-		// For restoring the state
-		this.serializeObjects = [
-			this.z80Cpu,
-			this.memory,
-			this.zxBeeper,
-			// this.ports // Note: ports are not serialized anymore. Since customCode.
-		];
 	}
 
 
