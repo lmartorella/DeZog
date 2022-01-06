@@ -1,7 +1,7 @@
 
 import * as assert from 'assert';
 import {MemBuffer} from '../src/misc/membuffer';
-import {PagedMemory} from '../src/remotes/zsimulator/pagedmemory';
+import {SimulatedMemory} from '../src/remotes/zsimulator/simmemory';
 
 // Simply publicly expose protected members
 class MemBufferInt extends MemBuffer {
@@ -10,12 +10,12 @@ class MemBufferInt extends MemBuffer {
 	}
 }
 
-suite('PagedMemory', () => {
+suite('SimulatedMemory', () => {
 	test('serialize/deserialize', () => {
 		let memBuffer: MemBufferInt;
 		let writeSize: number;
 		{
-			const mem=new PagedMemory(8, 256);
+			const mem=new SimulatedMemory(8, 256);
 
 			// Set slots
 			mem.setSlot(0, 253);
@@ -49,7 +49,7 @@ suite('PagedMemory', () => {
 		}
 
 		// Create a new object
-		const rMem=new PagedMemory(8, 256);
+		const rMem=new SimulatedMemory(8, 256);
 		rMem.deserialize(memBuffer);
 
 		// Check size
@@ -83,7 +83,7 @@ suite('PagedMemory', () => {
 
 
 	test('writeBlock/readBlock', () => {
-		const mem=new PagedMemory(8, 256);
+		const mem=new SimulatedMemory(8, 256);
 
 		mem.writeBlock(0x0000, new Uint8Array([0xAB]));
 		let result=mem.readBlock(0x0000, 2);
@@ -124,7 +124,7 @@ suite('PagedMemory', () => {
 
 
 	test('setMemory/getMemory', () => {
-		const mem=new PagedMemory(8, 256);
+		const mem=new SimulatedMemory(8, 256);
 
 		mem.setMemory16(0x0000, 0x1234);
 		let result=mem.getMemory16(0x0000);
@@ -156,7 +156,7 @@ suite('PagedMemory', () => {
 
 
 	test('non populated slots', () => {
-		const mem=new PagedMemory(4, 8);
+		const mem=new SimulatedMemory(4, 8);
 		mem.setAsNotPopulatedBank(2);
 		mem.setMemory8(0x7FFC, 1);
 		mem.setMemory8(0x7FFD, 2);

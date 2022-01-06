@@ -481,9 +481,8 @@ export class SimulatedMemory implements Serializeable {
 	/**
 	 * Returns the slots array, or undefined if not paged.
 	 */
-	public getSlots(): number[]|undefined {
-		//return this.slots;
-		return undefined;
+	public getSlots(): number[] {
+		return this.slots;
 	}
 
 	/**

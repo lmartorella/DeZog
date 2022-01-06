@@ -1,5 +1,5 @@
 import {Utility} from '../../misc/utility';
-import {PagedMemory} from './pagedmemory';
+import {SimulatedMemory} from './simmemory';
 
 
 /**
@@ -7,7 +7,7 @@ import {PagedMemory} from './pagedmemory';
  * Especially sets the ROM area and
  * the initial slot/bank configuration.
  */
-export class ZxNextMemory extends PagedMemory {
+export class ZxNextMemory extends SimulatedMemory {
 
 	/// Constructor.
 	constructor() {
