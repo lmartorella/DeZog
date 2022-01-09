@@ -150,51 +150,41 @@ export interface CustomCodeType {
 /**
  * Custom memory layout for the `zsim` remote
  */
-export interface ZSimCustomMemoryModel {
-	/**
-	 * The slot count. It should be a power of 2, to segment the 64K addressing space in addressing slots of same size.
-	 */
-	slotCount: number;
-
-	/**
-	 * Count of memory banks. It must include RAM and ROM space. `bankCount` can be less than `slotCount` if some slots
-	 * are left empty (not populated).
-	 */
-	bankCount: number;
-
-	/**
-	 * The initial state of bank assignment. The array must have exactly `slotCount` elements.
-	 * Numbers are bank indices in the [0,bankCount] interval. `null` can be used for not-populated slots.
-	 */
-	slots: Array<number | null>;
-
-	/**
-	 * Optional list of ROM bank definition.
-	 */
-	romBanks?: Array<ZSimRomInfo>;
-}
+export type ZSimCustomMemoryModel = Array<ZSimCustomMemorySlot>;
 
 
 /**
- * Define a ROM bank. See `ZSimCustomMemoryModel`.
+ * In JSON config numbers can be decimal or hex strings (NNNNh or 0xNNNN format).
  */
-export interface ZSimRomInfo {
+export type HexNumber = number | string;
+
+
+/**
+ * Custom layout of a `zsim` remote memory slot
+ */
+export interface ZSimCustomMemorySlot {
 	/**
-	 * Bank index in the [0,bankCount] interval.
+	 * The slot range (inclusive).
+	 * Slot size should not be smaller than 1K.
 	 */
-	bank: number;
+	range: [HexNumber, HexNumber];
 
 	/**
-	 * File path of the ROM data. File content should be in raw format (e.g. `.rom`).
-	 * The file size should be greater or equal to the slot size.
+	 * Optional. If specified, set the slot as ROM.
+	 * The content is the buffer content, or the path of the ROM content.
+	 * File content (or buffer) should be in raw format (e.g. `.rom`).
 	 */
-	file: string;
+	rom?: string | Uint8Array;
 
 	/**
-	 * Offset to start load data from the target file. Useful for ROMs spanning more slots.
-	 * Zero if not defined.
+	 * If set, enables banking on such slot.
 	 */
-	offset?: number;
+	banked?: {
+		/**
+		 * Count of banks that can be mapped on such slot
+		 */
+		count: number;
+	}
 }
 
 

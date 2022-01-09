@@ -38,8 +38,11 @@ export class SimulatedMemory implements Serializeable {
 	// For each bank this array tells if it is ROM or read-only (e.g. not populated).
 	protected romBanks: boolean[];
 
+	// For each bank this array tells if it is populated.
+	protected populatedBanks: boolean[];
+
 	// The used bank size.
-	private bankSize: number;
+	protected bankSize: number;
 
 	// The number of bits to shift to get the slot from the address
 	private shiftCount: number;
@@ -83,6 +86,10 @@ export class SimulatedMemory implements Serializeable {
 	 * @param bankCount Number of banks.
 	 */
 	constructor(slotCount: number, bankCount: number) {
+		this.init(slotCount, bankCount);
+	}
+
+	protected init(slotCount: number, bankCount: number) {
 		// Create visual memory
 		this.visualMemory=new Array<number>(1<<(16-this.VISUAL_MEM_SIZE_SHIFT));
 		this.clearVisualMemory();
@@ -93,6 +100,9 @@ export class SimulatedMemory implements Serializeable {
 		// No ROM at start
 		this.romBanks=new Array<boolean>(bankCount);
 		this.romBanks.fill(false);
+		// All populated at start
+		this.populatedBanks=new Array<boolean>(bankCount);
+		this.populatedBanks.fill(true);
 
 		// Calculate number of bits to shift to get the slot index from the address.
 		let sc=slotCount;
@@ -116,12 +126,19 @@ export class SimulatedMemory implements Serializeable {
 	/**
 	 * Read a binary file as ROM data to a specific bank
 	 */
-	protected readRomFileToBank(path: string, bank: number, offset?: number) {
+	protected readRomToBank(pathOrData: string | Uint8Array, bank: number, offset?: number) {
+		offset = offset || 0;
 		this.romBanks[bank] = true;
-		const romBuffer = fs.readFileSync(path);
 		const size = this.bankSize;
-		Utility.assert(romBuffer.length >= (offset || 0) + size, `ROM file ${path} length error`);
-		const rom = new Uint8Array(romBuffer.buffer, offset || 0, size);
+		let rom: Uint8Array;
+		if (typeof pathOrData === "string") {
+			const romBuffer = fs.readFileSync(pathOrData);
+			Utility.assert(romBuffer.length >= (offset) + size, `ROM file ${pathOrData} length error`);
+			rom = new Uint8Array(romBuffer.buffer, offset, size);
+		} else {
+			Utility.assert(pathOrData.length >= (offset) + size, `ROM data length error`);
+			rom = new Uint8Array(pathOrData, offset, size);
+		}
 		this.writeBank(bank, rom);
 	}
 
@@ -468,6 +485,7 @@ export class SimulatedMemory implements Serializeable {
 	 */
 	public setAsNotPopulatedBank(bank: number) {
 		this.romBanks[bank] = true;
+		this.populatedBanks[bank] = false;
 		this.writeBank(bank, new Uint8Array(this.bankSize).fill(NOT_POPULATED_VALUE));
 	}
 

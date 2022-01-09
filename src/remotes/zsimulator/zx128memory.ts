@@ -14,13 +14,13 @@ export class Zx128Memory extends SimulatedMemory {
 		super(4, 10);
 		// Bank 0-7 is RAM.
 		// Bank configuration
-		// Initially ROM 0 is selected
-		this.slots = [8 /*ROM*/, 5, 2, 0];
+		// Initially ROM 1 is selected
+		this.slots = [9 /*ROM*/, 5, 2, 0];
 
 		// 0000-0x3FFF is ROM. This is located in banks 8 and 9
 		const romFilePath = Utility.getExtensionPath() + '/data/128.rom';
-		this.readRomFileToBank(romFilePath, 8); /* 128 editor */
-		this.readRomFileToBank(romFilePath, 9, this.bankSize); /* ZX 48K */
+		this.readRomToBank(romFilePath, 8); /* 128 editor */
+		this.readRomToBank(romFilePath, 9, this.bankSize); /* ZX 48K */
 	}
 }
 

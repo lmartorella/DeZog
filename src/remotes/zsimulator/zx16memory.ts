@@ -13,7 +13,7 @@ export class Zx16Memory extends SimulatedMemory {
 
 		// 0000-0x3FFF is ROM
 		const romFilePath = Utility.getExtensionPath() + '/data/48.rom';
-		this.readRomFileToBank(romFilePath, 0);
+		this.readRomToBank(romFilePath, 0);
 
 		// 8000-0xFFFF is not populated, read as 0xFF (floating bus)
 		this.setAsNotPopulatedBank(2);

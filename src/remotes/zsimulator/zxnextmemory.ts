@@ -20,8 +20,8 @@ export class ZxNextMemory extends SimulatedMemory {
 		this.slots = [0xFE, 0xFF, 10, 11, 4, 5, 0, 1];
 		// Load the  ROM
 		const romFilePath = Utility.getExtensionPath() + '/data/48.rom';
-		this.readRomFileToBank(romFilePath, 0xFE); /* first half */
-		this.readRomFileToBank(romFilePath, 0xFF, this.bankSize); /* second half */
+		this.readRomToBank(romFilePath, 0xFE); /* first half */
+		this.readRomToBank(romFilePath, 0xFF, this.bankSize); /* second half */
 	}
 }
 

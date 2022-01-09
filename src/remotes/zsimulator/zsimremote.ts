@@ -22,7 +22,7 @@ import {SnaFile} from '../dzrp/snafile';
 import {NexFile} from '../dzrp/nexfile';
 import {CustomCode} from './customcode';
 import {BeeperBuffer, ZxBeeper} from './zxbeeper';
-import { CustomMemory } from './customMemory';
+import { CustomMemory } from './custommemory';
 
 
 
@@ -295,11 +295,7 @@ export class ZSimRemote extends DzrpRemote {
 		// Configure different memory models. Fallback 'RAM' to custom model (non-ZX)
 		if (memModel === "RAM") {
 			// 64K RAM, no ZX
-			memModel = {
-				bankCount: 1,
-				slotCount: 1,
-				slots: [0]
-			};
+			memModel = [{ range: [0, 0xFFFF] }]
 		}
 
 		if (typeof memModel === "string") {

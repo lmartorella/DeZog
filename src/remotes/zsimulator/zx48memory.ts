@@ -15,7 +15,7 @@ export class Zx48Memory extends SimulatedMemory {
 
 		// 0000-0x3FFF is ROM
 		const romFilePath = Utility.getExtensionPath() + '/data/48.rom';
-		this.readRomFileToBank(romFilePath, 0);
+		this.readRomToBank(romFilePath, 0);
 	}
 }
 
