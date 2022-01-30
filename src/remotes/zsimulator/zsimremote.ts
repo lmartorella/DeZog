@@ -302,7 +302,7 @@ export class ZSimRemote extends DzrpRemote {
 			this.configureZxMachine(memModel);
 		} else if (typeof memModel === "object") {
 			// Configure custom machine from declaration
-			this.memory = new CustomMemory(memModel);
+			this.memory = new CustomMemory(memModel, this.ports);
 			this.memoryModel = (this.memory as CustomMemory).getMemoryModel();
 		} else {
 			throw Error(`Unknown memory model structure: ${JSON.stringify(memModel)}.`);

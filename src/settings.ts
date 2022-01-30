@@ -184,6 +184,26 @@ export interface ZSimCustomMemorySlot {
 		 * Count of banks that can be mapped on such slot
 		 */
 		count: number;
+
+		/**
+		 * Declare how banks are switched
+		 */
+		control?: {
+			/**
+			 * The I/O port that control the banks (lower 8-bit address)
+			 */
+			ioPort: HexNumber | { mask: HexNumber, match: HexNumber };
+
+			/**
+			 * List of the bits of the byte that forms the bank selector
+			 */
+			ioBitMap: number[];
+
+			/**
+			 * True if the port can be read back
+			 */
+			readwrite?: boolean;
+		}
 	}
 }
 

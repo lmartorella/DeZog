@@ -1,6 +1,7 @@
 
 import * as assert from 'assert';
 import {CustomMemory} from '../src/remotes/zsimulator/customMemory';
+import { Z80Ports } from '../src/remotes/zsimulator/z80ports';
 
 // ROM that contains 0, 1, ... 0xff repeated to fill the target size
 const buildTestRom = (size: number) => {
@@ -22,7 +23,7 @@ suite('CustomMemory', () => {
 			{
 				range: [0x4000, 0xBFFF]
 			}
-		]);
+		], new Z80Ports(0xff));
 
 		assert.equal(0x00, mem.getMemory8(0x0000));
 		assert.equal(0x01, mem.getMemory8(0x0001));

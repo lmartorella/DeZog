@@ -2,6 +2,7 @@ import { SimulatedMemory } from './simmemory';
 import { MemoryBank, MemoryModel } from '../Paging/memorymodel';
 import { HexNumber, ZSimCustomMemoryModel, ZSimCustomMemorySlot } from '../../settings';
 import { Utility } from '../../misc/utility';
+import { Z80Ports } from './z80ports';
 
 export class CustomMemory extends SimulatedMemory {
 	private notPopulatedBank = -1;
@@ -18,28 +19,34 @@ export class CustomMemory extends SimulatedMemory {
 		}
 	}
 
-	constructor(memModel: ZSimCustomMemoryModel) {
+	constructor(memModel: ZSimCustomMemoryModel, private readonly ports: Z80Ports) {
 		super(1, 1);
 
 		interface SlotInfo extends Omit<ZSimCustomMemorySlot, "range"> {
 			begin: number;
 			end: number;
 			size: number;
+			sizeInPages: number;
 			populated?: boolean;
 			bankCount: number;
-			firstBank?: number;
+			firstBank: number;
 		}
 
 		let slots: SlotInfo[] = memModel.map(slot => {
 			const begin = this.toNumber(slot.range[0]);
 			const end = this.toNumber(slot.range[1]);
 			const size = end - begin + 1;
-			return { rom: slot.rom,
-					begin,
-					end,
-					size,
-					populated: true,
-					bankCount: slot.banked ? slot.banked.count : 1 };
+			return {
+				rom: slot.rom,
+				begin,
+				end,
+				size,
+				populated: true,
+				bankCount: slot.banked ? slot.banked.count : 1,
+				banked: slot.banked,
+				firstBank: -1,
+				sizeInPages: -1
+			};
 		});
 
 		// Check overlapping and fill the gaps
@@ -60,7 +67,9 @@ export class CustomMemory extends SimulatedMemory {
 						end: slots[i + 1].begin - 1,
 						populated: false,
 						size: slots[i + 1].begin - slot.end - 1,
-						bankCount: 1
+						bankCount: 1,
+						sizeInPages: -1,
+						firstBank: -1
 					});
 				}
 			} else {
@@ -71,7 +80,9 @@ export class CustomMemory extends SimulatedMemory {
 						end: 0xffff,
 						populated: false,
 						size: 0x10000 - slot.end - 1,
-						bankCount: 1
+						sizeInPages: -1,
+						bankCount: 1,
+						firstBank: -1
 					});
 				}
 			}
@@ -79,7 +90,10 @@ export class CustomMemory extends SimulatedMemory {
 		}, [] as SlotInfo[]);
 
 		const slotSize = Math.min(...slots.map(slot => slot.size));
-		slots.forEach(slot => slot.bankCount *= slot.size / slotSize);
+		slots.forEach(slot => {
+			slot.sizeInPages = slot.size / slotSize;
+			slot.bankCount *= slot.sizeInPages;
+		});
 
 		// Allocated non-populated bank
 		let bankCount = 0;
@@ -104,12 +118,48 @@ export class CustomMemory extends SimulatedMemory {
 		}
 
 		slots.forEach(slot => {
+			const firstSlot = slot.begin / slotSize;
 			if (slot.rom) {
 				for (let i = 0; i < slot.bankCount; i++) {
-					this.readRomToBank(slot.rom, slot.firstBank! + i, slotSize * i);
+					this.readRomToBank(slot.rom, slot.firstBank + i, slotSize * i);
 				}
 			}
+
+			const bankControl = slot.banked && slot.banked.control;
+			if (bankControl) {
+				const matcher = this.decodePortMask(bankControl.ioPort);
+				this.ports.registerGenericOutPortFunction((port, value) => {
+					if (matcher(port)) {
+						const bank = this.decodeBankBits(value, bankControl.ioBitMap) * slot.sizeInPages;
+						for (let i = 0; i < slot.sizeInPages; i++) {
+							this.setSlot(firstSlot + i, slot.firstBank + bank + i);
+						}
+					}
+				});
+			}
 		});
+	}
+
+	private decodeBankBits(byte: number, bitmap: number[]): number {
+		let ret = 0;
+		for (let b = 0, val = 1; b < bitmap.length; b++, val <<= 1) {
+			const mask = 1 << bitmap[b];
+			if (byte & mask) {
+				ret += val;
+			}
+		}
+		return ret;
+	}
+
+	private decodePortMask(port: HexNumber | { mask: HexNumber, match: HexNumber }): (port: number) => boolean {
+		if (typeof port === "number" || typeof port === "string") {
+			const match = this.toNumber(port);
+			return port => match === port;
+		} else {
+			const mask = this.toNumber(port.mask);
+			const match = this.toNumber(port.match);
+			return port => (port & mask) === match;
+		}
 	}
 
 	public getMemoryModel(): MemoryModel {
