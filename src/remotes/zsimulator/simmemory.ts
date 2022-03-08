@@ -1,6 +1,7 @@
 import {MemBuffer, Serializeable} from '../../misc/membuffer';
 import {Utility} from '../../misc/utility';
 import * as fs from 'fs';
+import * as path from 'path';
 
 
 // Not populated memory reads as 0xff from the Z80 bus
@@ -123,21 +124,39 @@ export class SimulatedMemory implements Serializeable {
 		this.watchPointMemory=Array.from({length: 0x10000}, () => ({read: 0, write: 0}));
 	}
 
+	private readHexFromFile(filePath: string, bankSize: number, offset: number): Uint8Array {
+		const { data }: { data: Buffer } = require("intel-hex").parse(fs.readFileSync(filePath));
+		Utility.assert(data.length >= offset + bankSize, `HEX file ${filePath} length error`);
+		return data.slice(offset, bankSize + offset);
+	}
+
+	private readRomFile(filePath: string, bankSize: number, offset: number): Uint8Array {
+		switch (path.extname(filePath).toLowerCase()) {
+		case ".hex":
+			return this.readHexFromFile(filePath, bankSize, offset);
+		case ".bin":
+		case ".rom":
+			const romBuffer = fs.readFileSync(filePath);
+			Utility.assert(romBuffer.length >= offset + bankSize, `ROM file ${filePath} length error`);
+			return new Uint8Array(romBuffer.buffer, offset, bankSize);
+		default:
+			throw new Error(`Unknown ROM extension file: ${filePath}`);
+		}
+	}
+
 	/**
-	 * Read a binary file as ROM data to a specific bank
+	 * Read a binary file as ROM data to a specific bank.
+	 * Supports raw format (.bin and .rom extensions) and I8HEX format (.hex extension)
 	 */
 	protected readRomToBank(pathOrData: string | Uint8Array, bank: number, offset?: number) {
 		offset = offset || 0;
 		this.romBanks[bank] = true;
-		const size = this.bankSize;
 		let rom: Uint8Array;
 		if (typeof pathOrData === "string") {
-			const romBuffer = fs.readFileSync(pathOrData);
-			Utility.assert(romBuffer.length >= (offset) + size, `ROM file ${pathOrData} length error`);
-			rom = new Uint8Array(romBuffer.buffer, offset, size);
+			rom = this.readRomFile(pathOrData, this.bankSize, offset || 0);
 		} else {
-			Utility.assert(pathOrData.length >= (offset) + size, `ROM data length error`);
-			rom = new Uint8Array(pathOrData, offset, size);
+			Utility.assert(pathOrData.length >= offset + this.bankSize, `ROM data length error`);
+			rom = new Uint8Array(pathOrData, offset, this.bankSize);
 		}
 		this.writeBank(bank, rom);
 	}

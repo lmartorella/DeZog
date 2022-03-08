@@ -172,9 +172,14 @@ export interface ZSimCustomMemorySlot {
 	/**
 	 * Optional. If specified, set the slot as ROM.
 	 * The content is the buffer content, or the path of the ROM content.
-	 * File content (or buffer) should be in raw format (e.g. `.rom`).
+	 * File content (or buffer) should be in raw format (i.e. `.rom` and `.bin` extensions) or Intel HEX 8-bit format (`.hex` extensions)
 	 */
 	rom?: string | Uint8Array;
+
+	/**
+	 * Offset the ROM file
+	 */
+	romOffset?: HexNumber;
 
 	/**
 	 * If set, enables banking on such slot.

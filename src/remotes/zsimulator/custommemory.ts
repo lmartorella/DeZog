@@ -38,6 +38,7 @@ export class CustomMemory extends SimulatedMemory {
 			const size = end - begin + 1;
 			return {
 				rom: slot.rom,
+				romOffset: slot.romOffset,
 				begin,
 				end,
 				size,
@@ -120,8 +121,9 @@ export class CustomMemory extends SimulatedMemory {
 		slots.forEach(slot => {
 			const firstSlot = slot.begin / slotSize;
 			if (slot.rom) {
+				const offset = this.toNumber(slot.romOffset || 0);
 				for (let i = 0; i < slot.bankCount; i++) {
-					this.readRomToBank(slot.rom, slot.firstBank + i, slotSize * i);
+					this.readRomToBank(slot.rom, slot.firstBank + i, slotSize * i + offset);
 				}
 			}
 
